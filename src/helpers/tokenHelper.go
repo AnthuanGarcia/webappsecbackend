@@ -1,40 +1,31 @@
 package helpers
 
 import (
-	"context"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
-	"user-athentication-golang/database"
-
 	jwt "github.com/golang-jwt/jwt"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type SignedDetails struct {
-	Username   string
-	Nombre     string
-	ApePaterno string
-	Uid        string
+	Username    string
+	Nombre      string
+	Ape_Paterno string
+	Uid         string
 	jwt.StandardClaims
 }
 
-var userCollection *mongo.Collection = database.OpenCollection(database.Client, "user")
-
-var SECRET_KEY string = os.Getenv("SECRET_KEY")
+var _SECRET_KEY = os.Getenv("SECRET_KEY")
 
 // GenerateAllTokens generates both teh detailed token and refresh token
 func GenerateAllTokens(username string, nombre string, ApePaterno string, uid string) (signedToken string, signedRefreshToken string, err error) {
+
 	claims := &SignedDetails{
-		Username:   username,
-		Nombre:     nombre,
-		ApePaterno: ApePaterno,
-		Uid:        uid,
+		Username:    username,
+		Nombre:      nombre,
+		Ape_Paterno: ApePaterno,
+		Uid:         uid,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Local().Add(time.Hour * time.Duration(24)).Unix(),
 		},
@@ -46,24 +37,29 @@ func GenerateAllTokens(username string, nombre string, ApePaterno string, uid st
 		},
 	}
 
-	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(SECRET_KEY))
-	refreshToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims).SignedString([]byte(SECRET_KEY))
+	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(_SECRET_KEY))
 
 	if err != nil {
-		log.Panic(err)
-		return
+		return "", "", err
 	}
 
-	return token, refreshToken, err
+	refreshToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims).SignedString([]byte(_SECRET_KEY))
+
+	if err != nil {
+		return "", "", err
+	}
+
+	return token, refreshToken, nil
 }
 
 //ValidateToken validates the jwt token
 func ValidateToken(signedToken string) (claims *SignedDetails, msg string) {
+
 	token, err := jwt.ParseWithClaims(
 		signedToken,
 		&SignedDetails{},
 		func(token *jwt.Token) (interface{}, error) {
-			return []byte(SECRET_KEY), nil
+			return []byte(_SECRET_KEY), nil
 		},
 	)
 
@@ -88,7 +84,7 @@ func ValidateToken(signedToken string) (claims *SignedDetails, msg string) {
 	return claims, msg
 }
 
-//UpdateAllTokens renews the user tokens when they login
+/*UpdateAllTokens renews the user tokens when they login
 func UpdateAllTokens(signedToken string, signedRefreshToken string, userId string) {
 	var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 
@@ -122,4 +118,4 @@ func UpdateAllTokens(signedToken string, signedRefreshToken string, userId strin
 	}
 
 	return
-}
+}*/

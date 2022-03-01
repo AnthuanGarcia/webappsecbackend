@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	model "github.com/AnthuanGarcia/appWebSeguridad/models"
+	model "github.com/AnthuanGarcia/appWebSeguridad/src/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -110,7 +110,7 @@ func GetUsers() (users []*model.User, err error) {
 
 }
 
-func GetUser(user *model.User) (result *model.User, err error) {
+func GetUser(user *model.User) (*model.User, error) {
 
 	//TODO: Funcion para obtener documento de un usuario
 
@@ -121,13 +121,15 @@ func GetUser(user *model.User) (result *model.User, err error) {
 	database := client.Database(_DB_NAME)
 	collection := database.Collection(_COLLECTION)
 
-	err = collection.FindOne(ctx, bson.M{"username": user.Username}).Decode(result)
+	result := &model.User{}
+
+	err := collection.FindOne(ctx, bson.M{"username": user.Username}).Decode(result)
 
 	if err != nil {
 		return nil, err
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.Contraseña), []byte(result.Contraseña))
+	err = bcrypt.CompareHashAndPassword([]byte(result.Contraseña), []byte(user.Contraseña))
 
 	if err != nil {
 		return nil, err
@@ -155,13 +157,20 @@ func UpdateAllTokens(signedToken string, signedRefreshToken string, userId strin
 	updateObj = append(updateObj, bson.E{Key: "fch_renovacion", Value: updated_at})
 
 	upsert := true
-	filter := bson.M{"user_id": userId}
+
+	id, err := primitive.ObjectIDFromHex(userId)
+
+	if err != nil {
+		return err
+	}
+
+	filter := bson.M{"_id": id}
 
 	opt := options.UpdateOptions{
 		Upsert: &upsert,
 	}
 
-	_, err := collection.UpdateOne(
+	_, err = collection.UpdateOne(
 		ctx,
 		filter,
 		bson.D{

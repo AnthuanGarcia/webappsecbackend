@@ -1,18 +1,18 @@
 package controllers
 
 import (
-	"fmt"
-	"http"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 
 	db "github.com/AnthuanGarcia/appWebSeguridad/db"
-	helper "github.com/AnthuanGarcia/appWebSeguridad/helpers"
-	models "github.com/AnthuanGarcia/appWebSeguridad/models"
+	helper "github.com/AnthuanGarcia/appWebSeguridad/src/helpers"
+	models "github.com/AnthuanGarcia/appWebSeguridad/src/models"
 )
 
 var (
@@ -33,7 +33,7 @@ func hashPassword(password string) string {
 
 }
 
-//VerifyPassword checks the input password while verifying it with the passward in the DB.
+/*VerifyPassword checks the input password while verifying it with the passward in the DB.
 func VerifyPassword(userPassword string, providedPassword string) (bool, string) {
 
 	err := bcrypt.CompareHashAndPassword([]byte(providedPassword), []byte(userPassword))
@@ -47,7 +47,7 @@ func VerifyPassword(userPassword string, providedPassword string) (bool, string)
 
 	return check, msg
 
-}
+}*/
 
 //CreateUser is the api used to tget a single user
 func SignUp(c *gin.Context) {
@@ -100,20 +100,29 @@ func SignUp(c *gin.Context) {
 	defer cancel()
 	*/
 
+	user.ID = primitive.NewObjectID()
+
 	user.Contraseña = hashPassword(user.Contraseña)
 
-	user.FchCreacion, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
-	user.FchRenovacion, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
+	user.Fch_Creacion, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
+	user.Fch_Renovacion, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
 
-	token, refreshToken, _ := helper.GenerateAllTokens(
+	token, refreshToken, err := helper.GenerateAllTokens(
 		user.Username,
 		user.Nombre,
-		user.ApePaterno,
+		user.Ape_Paterno,
 		user.ID.Hex(),
 	)
 
+	if err != nil {
+
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+
+	}
+
 	user.Token = token
-	user.TokenAct = refreshToken
+	user.Token_Act = refreshToken
 
 	result, err := db.InsertUser(user)
 
@@ -168,7 +177,7 @@ func Login(c *gin.Context) {
 	token, refreshToken, err := helper.GenerateAllTokens(
 		verifyUser.Username,
 		verifyUser.Nombre,
-		verifyUser.ApePaterno,
+		verifyUser.Ape_Paterno,
 		verifyUser.ID.Hex(),
 	)
 
