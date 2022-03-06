@@ -67,18 +67,14 @@ func InsertUser(user *model.User) (*mongo.InsertOneResult, error) {
 	database := client.Database(_DB_NAME)
 	collection := database.Collection(_COLLECTION)
 
-	count, err := collection.CountDocuments(ctx, bson.M{
-		"username":  user.Username,
-		"telefono":  user.Telefono,
-		"direccion": user.Direccion,
-	})
+	count, err := collection.CountDocuments(ctx, bson.M{"username": user.Username})
 
 	if err != nil {
 		return nil, err
 	}
 
 	if count >= 1 {
-		return nil, errors.New("Los datos del usuario ya estan registrados")
+		return nil, errors.New("El nombre de usuario ya esta registrado")
 	}
 
 	result, err := collection.InsertOne(ctx, user)
@@ -139,7 +135,7 @@ func GetUser(user *model.User) (*model.User, error) {
 
 }
 
-func UpdateAllTokens(signedToken string, signedRefreshToken string, userId string) error {
+func UpdateAllTokens(signedToken string, signedRefreshToken string, userId primitive.ObjectID) error {
 
 	client, ctx, _ := connect()
 
@@ -158,19 +154,13 @@ func UpdateAllTokens(signedToken string, signedRefreshToken string, userId strin
 
 	upsert := true
 
-	id, err := primitive.ObjectIDFromHex(userId)
-
-	if err != nil {
-		return err
-	}
-
-	filter := bson.M{"_id": id}
+	filter := bson.M{"_id": userId}
 
 	opt := options.UpdateOptions{
 		Upsert: &upsert,
 	}
 
-	_, err = collection.UpdateOne(
+	_, err := collection.UpdateOne(
 		ctx,
 		filter,
 		bson.D{
