@@ -12,6 +12,7 @@ func UserRoutes(incomingRoutes *gin.Engine) {
 
 	incomingRoutes.POST("/signup", controller.SignUp)
 	incomingRoutes.POST("/login", controller.Login)
+	incomingRoutes.POST("/many", controller.ManyUsers)
 	incomingRoutes.GET("/dash", middleware.Authentication, controller.Dashboard)
 
 }

@@ -12,20 +12,20 @@ type SignedDetails struct {
 	Username    string
 	Nombre      string
 	Ape_Paterno string
-	Uid         string
+	ID          string
 	jwt.StandardClaims
 }
 
 var _SECRET_KEY = os.Getenv("SECRET_KEY")
 
 // GenerateAllTokens generates both teh detailed token and refresh token
-func GenerateAllTokens(username string, nombre string, ApePaterno string, uid string) (signedToken string, signedRefreshToken string, err error) {
+func GenerateAllTokens(username string, nombre string, ApePaterno string, ID string) (signedToken string, signedRefreshToken string, err error) {
 
 	claims := &SignedDetails{
 		Username:    username,
 		Nombre:      nombre,
 		Ape_Paterno: ApePaterno,
-		Uid:         uid,
+		ID:          ID,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Local().Add(time.Hour * time.Duration(24)).Unix(),
 		},
@@ -83,39 +83,3 @@ func ValidateToken(signedToken string) (claims *SignedDetails, msg string) {
 
 	return claims, msg
 }
-
-/*UpdateAllTokens renews the user tokens when they login
-func UpdateAllTokens(signedToken string, signedRefreshToken string, userId string) {
-	var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
-
-	var updateObj primitive.D
-
-	updateObj = append(updateObj, bson.E{"token", signedToken})
-	updateObj = append(updateObj, bson.E{"refresh_token", signedRefreshToken})
-
-	Updated_at, _ := time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
-	updateObj = append(updateObj, bson.E{"updated_at", Updated_at})
-
-	upsert := true
-	filter := bson.M{"user_id": userId}
-	opt := options.UpdateOptions{
-		Upsert: &upsert,
-	}
-
-	_, err := userCollection.UpdateOne(
-		ctx,
-		filter,
-		bson.D{
-			{"$set", updateObj},
-		},
-		&opt,
-	)
-	defer cancel()
-
-	if err != nil {
-		log.Panic(err)
-		return
-	}
-
-	return
-}*/

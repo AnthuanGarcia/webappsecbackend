@@ -28,7 +28,7 @@ func Authentication(c *gin.Context) {
 	c.Set("username", claims.Username)
 	c.Set("nombre", claims.Nombre)
 	c.Set("ape_paterno", claims.Ape_Paterno)
-	c.Set("uid", claims.Uid)
+	c.Set("ID", claims.ID)
 
 	c.Next()
 

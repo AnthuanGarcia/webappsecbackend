@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -123,7 +125,7 @@ func Login(c *gin.Context) {
 
 	}
 
-	c.JSON(http.StatusOK, verifyUser)
+	c.JSON(http.StatusOK, verifyUser.Token)
 
 }
 
@@ -139,5 +141,93 @@ func Dashboard(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, users)
+
+}
+
+func ManyUsers(c *gin.Context) {
+
+	users := []models.User{}
+
+	body, err := ioutil.ReadAll(c.Request.Body)
+
+	if err != nil {
+
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+
+	}
+
+	err = json.Unmarshal(body, &users)
+
+	if err != nil {
+
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+
+	}
+
+	for i := range users {
+
+		validationErr := validate.Struct(users[i])
+		if validationErr != nil {
+
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": validationErr.Error(),
+				"usr":   users[i],
+			})
+
+			return
+
+		}
+
+		if !helper.ValidatePassword(users[i].Contraseña) {
+
+			c.JSON(http.StatusBadRequest, gin.H{"error": "La contraseña debe contener una letra minuscula, una letra mayuscula, un numero y un simbolo"})
+			return
+
+		}
+
+		users[i].ID = primitive.NewObjectID()
+
+		users[i].Contraseña = helper.HashPassword(users[i].Contraseña)
+
+		users[i].Fch_Creacion, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
+		users[i].Fch_Renovacion, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
+
+		token, refreshToken, err := helper.GenerateAllTokens(
+			users[i].Username,
+			users[i].Nombre,
+			users[i].Ape_Paterno,
+			users[i].ID.Hex(),
+		)
+
+		if err != nil {
+
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+
+		}
+
+		users[i].Token = token
+		users[i].Token_Act = refreshToken
+
+	}
+
+	userModified := make([]interface{}, len(users))
+
+	for i, user := range users {
+		userModified[i] = user
+	}
+
+	err = db.InsertManyUsers(userModified)
+
+	if err != nil {
+
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ok": "Usuarios insertados"})
 
 }

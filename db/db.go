@@ -3,9 +3,9 @@ package db
 import (
 	"context"
 	"errors"
-	"fmt"
+	_ "fmt"
 	"log"
-	"os"
+	_ "os"
 	"time"
 
 	model "github.com/AnthuanGarcia/appWebSeguridad/src/models"
@@ -18,8 +18,9 @@ import (
 
 // Variables para la conexion
 const (
-	_TIMEOUT      = 30
+	_TIMEOUT      = 15
 	_STR_TEMPLATE = "mongodb+srv://%s:%s@webappsec.odee2.mongodb.net/%s?retryWrites=true&w=majority"
+	_URI          = "mongodb://localhost:27017"
 	_DB_NAME      = "WebAppSec"
 	_COLLECTION   = "Usuarios"
 )
@@ -27,7 +28,7 @@ const (
 // getConnection - Conexion a MongoDB
 func connect() (*mongo.Client, context.Context, context.CancelFunc) {
 
-	username := os.Getenv("MONGO_USERNAME")
+	/*username := os.Getenv("MONGO_USERNAME")
 	password := os.Getenv("MONGO_PASSWORD")
 	clusterEndPoint := os.Getenv("MONGO_ENDPOINT")
 
@@ -37,7 +38,7 @@ func connect() (*mongo.Client, context.Context, context.CancelFunc) {
 		username,
 		password,
 		clusterEndPoint,
-	)
+	)*/
 
 	// Obtenemos un elemento del tipo context para poder realizar consultas
 	ctx, cancel := context.WithTimeout(
@@ -46,7 +47,8 @@ func connect() (*mongo.Client, context.Context, context.CancelFunc) {
 	)
 
 	// Conectamos al cliente de Mongo con la URI generada
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(connectionURI))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(_URI))
+
 	if err != nil {
 		log.Panicf("Fallo al conectar al cluster %v\n", err)
 	}
@@ -87,6 +89,25 @@ func InsertUser(user *model.User) (*mongo.InsertOneResult, error) {
 
 }
 
+func InsertManyUsers(users []interface{}) error {
+
+	client, ctx, _ := connect()
+
+	defer client.Disconnect(ctx)
+
+	database := client.Database(_DB_NAME)
+	collection := database.Collection(_COLLECTION)
+
+	_, err := collection.InsertMany(ctx, users)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
 func GetUsers() (users []*model.User, err error) {
 
 	client, ctx, _ := connect()
@@ -122,13 +143,13 @@ func GetUser(user *model.User) (*model.User, error) {
 	err := collection.FindOne(ctx, bson.M{"username": user.Username}).Decode(result)
 
 	if err != nil {
-		return nil, err
+		return nil, errors.New("Usuario no registrado")
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(result.Contraseña), []byte(user.Contraseña))
 
 	if err != nil {
-		return nil, err
+		return nil, errors.New("Contraseña incorrecta")
 	}
 
 	return result, nil
